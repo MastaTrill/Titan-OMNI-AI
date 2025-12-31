@@ -1,0 +1,9 @@
+{
+  "name": "Titan OMNI Sovereign v25",
+  "description": "High-fidelity JARVIS-like command center with real-time audio, video, and kinetic memory integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
