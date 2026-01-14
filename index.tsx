@@ -1,13 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { 
-  GoogleGenAI, 
-  Modality, 
-  Type, 
-  LiveServerMessage, 
-  FunctionDeclaration, 
-  GenerateContentResponse
+import {
+  GoogleGenAI,
+  Modality,
+  Type,
+  FunctionDeclaration
 } from "@google/genai";
 
 // --- Types & Constants ---
@@ -174,28 +172,39 @@ const TelemetryChart = ({ data, label, color }: { data: number[], label: string,
   </div>
 );
 
-const PhysicsArena = ({ 
-  accent, 
-  entities, 
-  onDragState, 
-  layers, 
-  selectedEntityId, 
+const PhysicsArena = ({
+  accent,
+  entities,
+  onDragState,
+  layers,
+  selectedEntityId,
   onSelectEntity,
   temporalScale,
   subSteps = 4,
   showVectors = true,
   markers = []
-}: any) => {
+}: {
+  accent: string;
+  entities: PhysicsEntity[];
+  onDragState: (dragging: boolean) => void;
+  layers: Record<string, Layer>;
+  selectedEntityId: number | null;
+  onSelectEntity: (id: number | null) => void;
+  temporalScale: number;
+  subSteps?: number;
+  showVectors?: boolean;
+  markers?: TacticalMarker[];
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const entitiesRef = useRef<PhysicsEntity[]>([]);
   const mouseRef = useRef({ x: 0, y: 0 });
 
-  useEffect(() => { 
-    entitiesRef.current = entities.map((e: any) => ({
-      ...e, 
+  useEffect(() => {
+    entitiesRef.current = entities.map((e: PhysicsEntity) => ({
+      ...e,
       stress: e.stress || 0,
       history: e.history || []
-    })); 
+    }));
   }, [entities]);
 
   useEffect(() => {
@@ -204,26 +213,29 @@ const PhysicsArena = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const stepSize = temporalScale / subSteps; // Define stepSize based on temporalScale and subSteps
+
     const frame = () => {
-      const ts = temporalScale || 1.0;
-      const stepSize = ts / subSteps;
-      const width = canvas.width;
-      const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
-      
+
       const ps = entitiesRef.current;
-      
+
       for (let s = 0; s < subSteps; s++) {
         for (let i = 0; i < ps.length; i++) {
           for (let j = i + 1; j < ps.length; j++) {
             const a = ps[i], b = ps[j];
             const dx = b.x - a.x, dy = b.y - a.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
             const minDist = (a.size + b.size) / 2;
             if (dist < minDist) {
               const angle = Math.atan2(dy, dx);
               const overlap = minDist - dist;
-              const impactVel = Math.sqrt((a.vx-b.vx)**2 + (a.vy-b.vy)**2);
+              const impactVel = Math.sqrt((a.vx - b.vx) ** 2 + (a.vy - b.vy) ** 2);
               a.stress = Math.min(100, (a.stress || 0) + impactVel * (1 - a.tensileStrength));
               b.stress = Math.min(100, (b.stress || 0) + impactVel * (1 - b.tensileStrength));
               const mSum = a.mass + b.mass;
@@ -239,13 +251,13 @@ const PhysicsArena = ({
           }
         }
 
-        ps.forEach(p => {
+        ps.forEach((p: PhysicsEntity) => {
           const env = layers[p.layerId] || layers.DEFAULT;
           if (p.isDragging) {
             p.vx = (mouseRef.current.x - p.x) * 0.2;
             p.vy = (mouseRef.current.y - p.y) * 0.2;
           } else {
-            p.vx += env.gravity.x * stepSize; 
+            p.vx += env.gravity.x * stepSize;
             p.vy += env.gravity.y * stepSize;
             const depth = (p.y / height);
             const bForce = env.atmDensity * (p.size * p.buoyancy) * 0.4 * depth;
@@ -263,13 +275,13 @@ const PhysicsArena = ({
           if (p.x < 0) { p.x = 0; p.vx *= -p.elasticity; }
 
           if (s === 0) {
-            const ke = 0.5 * p.mass * (p.vx*p.vx + p.vy*p.vy) / 1000;
+            const ke = 0.5 * p.mass * (p.vx * p.vx + p.vy * p.vy) / 1000;
             p.history = [...p.history.slice(-19), ke];
           }
         });
       }
 
-      ps.forEach(p => {
+      ps.forEach((p: PhysicsEntity) => {
         const el = document.getElementById(`pe-${p.id}`);
         const layer = layers[p.layerId] || layers.DEFAULT;
         if (el) {
@@ -293,7 +305,7 @@ const PhysicsArena = ({
       markers.forEach((m: TacticalMarker) => {
         ctx.strokeStyle = '#ff4b2b';
         ctx.beginPath();
-        ctx.arc(m.x, m.y, 10, 0, Math.PI*2);
+        ctx.arc(m.x, m.y, 10, 0, Math.PI * 2);
         ctx.stroke();
         ctx.fillStyle = '#ff4b2b';
         ctx.font = '8px JetBrains Mono';
@@ -302,8 +314,9 @@ const PhysicsArena = ({
 
       requestAnimationFrame(frame);
     };
-    const req = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(req);
+
+    frame(); // Start the animation loop
+    return () => {}; // No cancellation needed for recursive animation
   }, [accent, layers, selectedEntityId, temporalScale, subSteps, showVectors, markers]);
 
   return (
@@ -352,11 +365,9 @@ const GlassPanel = ({ title, children, className = "", extraHeader }: any) => (
 );
 
 // --- Fix missing components ---
-const BiometricHandshake = ({ onComplete }: { onComplete: () => void }) => {
-  const [progress, setProgress] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress(p => {
+      setProgress((p: number) => {
         if (p >= 100) {
           clearInterval(interval);
           setTimeout(onComplete, 300);
@@ -365,6 +376,8 @@ const BiometricHandshake = ({ onComplete }: { onComplete: () => void }) => {
         return p + 2;
       });
     }, 40);
+    return () => clearInterval(interval);
+  }, [onComplete]);
     return () => clearInterval(interval);
   }, [onComplete]);
 
@@ -396,16 +409,16 @@ const SpectralReactor = ({ active, intensity, accent }: { active: boolean, inten
 // --- Main App ---
 const App = () => {
   const [booted, setBooted] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [synapses, setSynapses] = useState<Synapse[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
   const [grounding, setGrounding] = useState<GroundingLink[]>([]);
   const [mode, setMode] = useState<Mode>('pro');
   const [persona, setPersona] = useState<Persona>('Standard');
   const [vision, setVision] = useState<VisionFilter>('normal');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  
-  const [temporalScale, setTemporalScale] = useState(1.0);
+
+  const [temporalScale] = useState(1.0); // Remove setter if unused
+  const [subSteps] = useState(4); // Remove setter if unused
+  const [showVectors] = useState(true); // Remove setter if unused
   const [subSteps, setSubSteps] = useState(4);
   const [showVectors, setShowVectors] = useState(true);
 
@@ -416,7 +429,7 @@ const App = () => {
     'DEFAULT': { id: 'DEFAULT', name: 'CORE_FIELD', visible: true, gravity: { x: 0, y: 0.15 }, atmDensity: 1.0, viscosity: 0.1, colorBias: '#00e5ff' }
   });
   const [physics, setPhysics] = useState<PhysicsEntity[]>([
-    { id: 1, layerId: 'DEFAULT', type: 'sphere', x: 300, y: 300, z: 0, vx: 2, vy: 0, vz: 0, size: 50, mass: 1000, elasticity: 0.85, friction: 0.05, damping: 0.01, airResistance: 0.005, viscosity: 0.05, tensileStrength: 0.8, buoyancy: 0.5, stress: 0, history: [] }
+    { id: 1, layerId: 'DEFAULT', type: 'sphere', x: 250, y: 150, z: 0, vx: 2, vy: 0, vz: 0, size: 50, mass: 1000, elasticity: 0.85, friction: 0.05, damping: 0.01, airResistance: 0.005, viscosity: 0.05, tensileStrength: 0.8, buoyancy: 0.5, stress: 0, history: [] }
   ]);
 
   const cameraRef = useRef<HTMLVideoElement>(null);
@@ -440,48 +453,46 @@ const App = () => {
     const ctx = canvas.getContext('2d');
     if (cameraRef.current && ctx) ctx.drawImage(cameraRef.current, 0, 0, 640, 480);
     return canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-  }, []);
-
-  const handleTool = async (fc: any) => {
+  const handleTool = async (fc: { name: string; args: any }) => {
     switch (fc.name) {
       case 'archive_insight':
         const nSyn: Synapse = { id: Date.now().toString(), fact: fc.args.fact, category: fc.args.category || 'INTEL', timestamp: new Date().toLocaleTimeString() };
-        setSynapses(prev => [nSyn, ...prev.slice(0, 15)]);
+        setSynapses((prev: Synapse[]) => [nSyn, ...prev.slice(0, 15)]);
         return "MEMORY_ENCRYPTED";
       case 'spawn_kinetic_node':
         const mat = (fc.args.material as MaterialPreset) || 'Default';
         const layerId = fc.args.layer || 'DEFAULT';
         const id = Date.now();
-        setPhysics(prev => [...prev, { 
-          id, layerId, type: 'sphere', x: window.innerWidth / 2, y: window.innerHeight / 2, z: 0, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, vz: 0, size: 50, 
+        setPhysics((prev: PhysicsEntity[]) => [...prev, {
+          id, layerId, type: 'sphere', x: 250, y: 150, z: 0, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, vz: 0, size: 50,
           ...MATERIAL_PRESETS[mat], stress: 0, history: []
         } as PhysicsEntity]);
         setSelectedEntityId(id);
         return "UNIT_INSTANTIATED";
       case 'place_tactical_marker':
-        setMarkers(prev => [...prev, { id: Date.now(), x: fc.args.x, y: fc.args.y, text: fc.args.text, type: fc.args.type || 'IDENT' }]);
+        setMarkers((prev: TacticalMarker[]) => [...prev, { id: Date.now(), x: fc.args.x, y: fc.args.y, text: fc.args.text, type: fc.args.type || 'IDENT' }]);
         return "MARKER_STATIONED";
       default: return "ACKNOWLEDGED";
     }
   };
-
+    }
   const processInput = async (txt: string) => {
     if (!txt.trim() || isThinking) return;
-    setMessages(prev => [...prev, { role: 'user', text: txt }]);
+    setMessages((prev: Message[]) => [...prev, { role: 'user', text: txt }]);
     setInput(''); setIsThinking(true);
-    
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const model = mode === 'thinking' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
-      const config: any = { 
+      const config: any = {
         tools: [{ functionDeclarations: jarvisTools }, { googleSearch: {} }],
         systemInstruction: `SOVEREIGN v25 - ASTRA Protocol. Persona: ${persona}. Control AR markers, kinetic nodes, and neural archives. Be efficient and authoritative.`
       };
 
-      const res = await ai.models.generateContent({ 
-        model, 
+      const res = await ai.models.generateContent({
+        model,
         contents: { parts: [{ text: txt }, { inlineData: { data: captureFrame(), mimeType: 'image/jpeg' } }] },
-        config 
+        config
       });
 
       const fcParts = res.candidates?.[0]?.content?.parts.filter(p => p.functionCall) || [];
@@ -489,15 +500,15 @@ const App = () => {
 
       const links = (res.candidates?.[0]?.groundingMetadata?.groundingChunks || []).map((c: any) => ({
           uri: c.web?.uri || '', title: c.web?.title || '', type: 'web' as const
-      })).filter(l => !!l.uri);
-      
+      })).filter((l: GroundingLink) => !!l.uri);
+
       const responseText = res.text || "SYSTEM_ACK";
-      setMessages(prev => [...prev, { role: 'jarvis', text: responseText, links }]);
-      
-      const tts = await ai.models.generateContent({ 
-        model: 'gemini-2.5-flash-preview-tts', 
-        contents: [{ parts: [{ text: responseText }] }], 
-        config: { responseModalities: [Modality.AUDIO] } 
+      setMessages((prev: Message[]) => [...prev, { role: 'jarvis', text: responseText, links }]);
+
+      const tts = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-preview-tts',
+        contents: [{ parts: [{ text: responseText }] }],
+        config: { responseModalities: [Modality.AUDIO] }
       });
       const audio = tts.candidates?.[0]?.content?.parts[0]?.inlineData?.data;
       if (audio) {
@@ -506,13 +517,15 @@ const App = () => {
         const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination);
         src.start(); setIsSpeaking(true); src.onended = () => setIsSpeaking(false);
       }
-    } catch (e: any) { setMessages(p => [...p, { role: 'system', text: "Lattice error.", isError: true, diagnostic: { text: "ASTRA_ERR", detail: e.message, solution: "Verify uplink project keys." } }]); }
+    } catch (e: any) { setMessages((p: Message[]) => [...p, { role: 'system', text: "Lattice error.", isError: true, diagnostic: { text: "ASTRA_ERR", detail: e.message, solution: "Verify uplink project keys." } }]); }
     finally { setIsThinking(false); }
   };
-
+    finally { setIsThinking(false); }
   const updateEntityVal = (id: number, prop: keyof PhysicsEntity, val: any) => {
-    setPhysics(prev => prev.map(p => p.id === id ? { ...p, [prop]: val } : p));
+    setPhysics((prev: PhysicsEntity[]) => prev.map((p: PhysicsEntity) => p.id === id ? { ...p, [prop]: val } : p));
   };
+
+  const activeEntity = useMemo(() => physics.find((p: PhysicsEntity) => p.id === selectedEntityId), [physics, selectedEntityId]);
 
   const activeEntity = useMemo(() => physics.find(p => p.id === selectedEntityId), [physics, selectedEntityId]);
 
@@ -546,12 +559,12 @@ const App = () => {
         <aside className="hud-col left">
           <GlassPanel title="NEURAL_ARCHIVE">
             <div className="archive-wrap">
-              <NeuralLattice active={isThinking} />
-              <div className="synapse-lattice">
-                {synapses.map(s => (
+                {synapses.map((s: Synapse) => (
                   <div key={s.id} className="synapse">
                     <div className="s-meta">{s.timestamp} // {s.category}</div>
                     <div className="s-text">{s.fact}</div>
+                  </div>
+                ))}
                   </div>
                 ))}
               </div>
@@ -560,7 +573,7 @@ const App = () => {
 
           <GlassPanel title="TELEMETRY_REALTIME">
             {activeEntity ? (
-              <div className="telemetry-charts">
+                <TelemetryChart data={activeEntity.history.map((v: number) => v * 0.8)} label="STRESS_LOAD (σ)" color={theme.alert} />
                 <TelemetryChart data={activeEntity.history} label="KINETIC_ENERGY (kJ)" color={theme.accent} />
                 <TelemetryChart data={activeEntity.history.map(v => v * 0.8)} label="STRESS_LOAD (σ)" color={theme.alert} />
               </div>
@@ -571,12 +584,10 @@ const App = () => {
         </aside>
 
         <section className="hud-col center">
-          <div className="arena-wrapper ar-integrated">
-            <video ref={cameraRef} autoPlay playsInline muted className="optic-feed" />
-            <PhysicsArena 
-              accent={theme.accent} 
-              entities={physics} 
-              layers={layers} 
+            <PhysicsArena
+              accent={theme.accent}
+              entities={physics}
+              layers={layers}
               markers={markers}
               selectedEntityId={selectedEntityId}
               onSelectEntity={setSelectedEntityId}
@@ -585,22 +596,24 @@ const App = () => {
               showVectors={showVectors}
               onDragState={() => {}}
             />
+              onDragState={() => {}}
+            />
             
             {activeEntity && (
               <div className="entity-inspector">
                 <div className="inspector-head">UNIT: {activeEntity.id}</div>
                 <div className="inspector-body">
                   <div className="material-picker">
-                    <label>MATERIAL_SYNC</label>
-                    <div className="preset-grid">
-                      {(Object.keys(MATERIAL_PRESETS) as MaterialPreset[]).map(m => (
+                      {(Object.keys(MATERIAL_PRESETS) as MaterialPreset[]).map((m: MaterialPreset) => (
+                        <button key={m} onClick={() => setPhysics((p: PhysicsEntity[]) => p.map((x: PhysicsEntity) => x.id === activeEntity.id ? { ...x, ...MATERIAL_PRESETS[m] } : x))}>{m}</button>
+                      ))}
                         <button key={m} onClick={() => setPhysics(p => p.map(x => x.id === activeEntity.id ? {...x, ...MATERIAL_PRESETS[m]} : x))}>{m}</button>
                       ))}
                     </div>
                   </div>
-                  <div className="control">
+                    <input type="range" min="100" max="10000" step="100" value={activeEntity.mass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateEntityVal(activeEntity.id, 'mass', parseFloat(e.target.value))} />
                     <label>MASS ({activeEntity.mass})</label>
-                    <input type="range" min="100" max="10000" step="100" value={activeEntity.mass} onChange={e => updateEntityVal(activeEntity.id, 'mass', parseFloat(e.target.value))} />
+                  <button className="del-btn" onClick={() => setPhysics((p: PhysicsEntity[]) => p.filter((x: PhysicsEntity) => x.id !== activeEntity.id))}>DISCHARGE_NODE</button>
                   </div>
                   <button className="del-btn" onClick={() => setPhysics(p => p.filter(x => x.id !== activeEntity.id))}>DISCHARGE_NODE</button>
                 </div>
@@ -609,46 +622,46 @@ const App = () => {
             {isThinking && <div className="think-label">ENVIRONMENT_SCANNING...</div>}
             <div className="ar-vignette" />
           </div>
-          <div className="input-strip">
-            <div className="prompt">ASTRA></div>
+            <input value={input} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && processInput(input)} placeholder="AWAITING SPATIAL COMMAND..." />
+            <div className="prompt">ASTRA{'>'}</div>
             <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && processInput(input)} placeholder="AWAITING SPATIAL COMMAND..." />
           </div>
         </section>
-
-        <aside className="hud-col right">
           <GlassPanel title="SPATIAL_LAYERS">
             <div className="layer-list">
-              {Object.values(layers).map(l => (
+              {(Object.values(layers) as Layer[]).map((l: Layer) => (
                 <div key={l.id} className="layer-item">
                   <div className="layer-row">
                     <span className="l-name">{l.name}</span>
-                    <input type="color" value={l.colorBias} onChange={e => setLayers(p => ({...p, [l.id]: {...l, colorBias: e.target.value}}))} />
+                    <input type="color" value={l.colorBias} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLayers((p: Record<string, Layer>) => ({ ...p, [l.id]: { ...l, colorBias: e.target.value } }))} />
                   </div>
-                  <input type="range" min="-0.5" max="0.5" step="0.01" value={l.gravity.y} onChange={e => setLayers(p => ({...p, [l.id]: {...l, gravity: {...l.gravity, y: parseFloat(e.target.value)}}}))} />
+                  <input type="range" min="-0.5" max="0.5" step="0.01" value={l.gravity.y} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLayers((p: Record<string, Layer>) => ({ ...p, [l.id]: { ...l, gravity: { ...l.gravity, y: parseFloat(e.target.value) } } }))} />
                 </div>
               ))}
             </div>
           </GlassPanel>
+            </div>
+          </GlassPanel>
 
-          <GlassPanel title="REMOTE_INTELLIGENCE">
-            <div className="grounding-list">
-              {grounding.map((l, i) => (
+              {grounding.map((l: GroundingLink, i: number) => (
                 <a key={i} href={l.uri} target="_blank" className="grounding-item">
                   <span className="g-type">[LINK]</span>
                   <span className="g-title">{l.title || l.uri}</span>
                 </a>
               ))}
+                </a>
+              ))}
               {grounding.length === 0 && <div className="empty">NO_REMOTE_UPLINK</div>}
             </div>
           </GlassPanel>
-
-          <GlassPanel title="SYSTEM_TELEMETRY">
             <div className="telemetry-box">
-              {messages.map((m, i) => (
+              {messages.map((m: Message, i: number) => (
                 <div key={i} className={`entry ${m.role}`}>
                   <div className="entry-head">{m.role.toUpperCase()}</div>
                   <div className="entry-content">{m.text}</div>
                 </div>
+              ))}
+            </div>
               ))}
             </div>
           </GlassPanel>
@@ -687,6 +700,7 @@ const App = () => {
         .arena-wrapper { flex: 1; background: #000; border: 1.5px solid rgba(0, 229, 255, 0.2); border-radius: 4px; position: relative; overflow: hidden; }
         .optic-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
         .ar-vignette { position: absolute; inset: 0; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); pointer-events: none; }
+        .ar-overlay { position: absolute; inset: 0; pointer-events: auto; }
 
         .p-node { position: absolute; border: 2px solid; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; background: rgba(255,255,255,0.05); backdrop-filter: blur(2px); }
         .p-tag { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 7px; white-space: nowrap; color: #fff; text-shadow: 1px 1px 2px #000; }
