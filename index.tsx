@@ -517,8 +517,7 @@ const App = () => {
 
   const activeEntity = useMemo(() => physics.find(p => p.id === selectedEntityId), [physics, selectedEntityId]);
 
-  // Temporarily bypass handshake for debugging
-  // if (!booted) return <BiometricHandshake onComplete={() => setBooted(true)} />;
+  if (!booted) return <BiometricHandshake onComplete={() => setBooted(true)} />;
 
   return (
     <div className={`omni-v25 vision-${vision} persona-${persona.toLowerCase()}`}>
@@ -648,5 +647,5 @@ const App = () => {
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
-  root.render(<div style={{color: 'white', padding: '20px', background: 'black'}}>TITAN-OMNI-AI LOADED SUCCESSFULLY</div>);
+  root.render(<App />);
 }
