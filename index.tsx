@@ -485,7 +485,7 @@ const App = () => {
         throw new Error('GEMINI_API_KEY not configured. Please set your API key.');
       }
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const model = mode === 'thinking' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+      const model = mode === 'thinking' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
       const config: any = {
         tools: [{ functionDeclarations: jarvisTools }, { googleSearch: {} }],
         systemInstruction: `SOVEREIGN v25 - ASTRA Protocol. Persona: ${persona}. Control AR markers, kinetic nodes, and neural archives. Be efficient and authoritative.`
