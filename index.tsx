@@ -365,6 +365,8 @@ const GlassPanel = ({ title, children, className = "", extraHeader }: any) => (
 );
 
 // --- Fix missing components ---
+const BiometricHandshake = ({ onComplete }: { onComplete: () => void }) => {
+  const [progress, setProgress] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((p: number) => {
@@ -376,8 +378,6 @@ const GlassPanel = ({ title, children, className = "", extraHeader }: any) => (
         return p + 2;
       });
     }, 40);
-    return () => clearInterval(interval);
-  }, [onComplete]);
     return () => clearInterval(interval);
   }, [onComplete]);
 
@@ -419,8 +419,6 @@ const App = () => {
   const [temporalScale] = useState(1.0); // Remove setter if unused
   const [subSteps] = useState(4); // Remove setter if unused
   const [showVectors] = useState(true); // Remove setter if unused
-  const [subSteps, setSubSteps] = useState(4);
-  const [showVectors, setShowVectors] = useState(true);
 
   const [input, setInput] = useState('');
   const [selectedEntityId, setSelectedEntityId] = useState<number | null>(null);
@@ -453,6 +451,7 @@ const App = () => {
     const ctx = canvas.getContext('2d');
     if (cameraRef.current && ctx) ctx.drawImage(cameraRef.current, 0, 0, 640, 480);
     return canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+  }, []);
   const handleTool = async (fc: { name: string; args: any }) => {
     switch (fc.name) {
       case 'archive_insight':
@@ -475,7 +474,6 @@ const App = () => {
       default: return "ACKNOWLEDGED";
     }
   };
-    }
   const processInput = async (txt: string) => {
     if (!txt.trim() || isThinking) return;
     setMessages((prev: Message[]) => [...prev, { role: 'user', text: txt }]);
@@ -520,12 +518,9 @@ const App = () => {
     } catch (e: any) { setMessages((p: Message[]) => [...p, { role: 'system', text: "Lattice error.", isError: true, diagnostic: { text: "ASTRA_ERR", detail: e.message, solution: "Verify uplink project keys." } }]); }
     finally { setIsThinking(false); }
   };
-    finally { setIsThinking(false); }
   const updateEntityVal = (id: number, prop: keyof PhysicsEntity, val: any) => {
     setPhysics((prev: PhysicsEntity[]) => prev.map((p: PhysicsEntity) => p.id === id ? { ...p, [prop]: val } : p));
   };
-
-  const activeEntity = useMemo(() => physics.find((p: PhysicsEntity) => p.id === selectedEntityId), [physics, selectedEntityId]);
 
   const activeEntity = useMemo(() => physics.find(p => p.id === selectedEntityId), [physics, selectedEntityId]);
 
@@ -565,17 +560,14 @@ const App = () => {
                     <div className="s-text">{s.fact}</div>
                   </div>
                 ))}
-                  </div>
-                ))}
-              </div>
             </div>
           </GlassPanel>
 
           <GlassPanel title="TELEMETRY_REALTIME">
             {activeEntity ? (
+              <div>
                 <TelemetryChart data={activeEntity.history.map((v: number) => v * 0.8)} label="STRESS_LOAD (σ)" color={theme.alert} />
                 <TelemetryChart data={activeEntity.history} label="KINETIC_ENERGY (kJ)" color={theme.accent} />
-                <TelemetryChart data={activeEntity.history.map(v => v * 0.8)} label="STRESS_LOAD (σ)" color={theme.alert} />
               </div>
             ) : (
               <div className="empty">SELECT_NODE_FOR_TELEMETRY</div>
@@ -596,8 +588,6 @@ const App = () => {
               showVectors={showVectors}
               onDragState={() => {}}
             />
-              onDragState={() => {}}
-            />
             
             {activeEntity && (
               <div className="entity-inspector">
@@ -607,26 +597,22 @@ const App = () => {
                       {(Object.keys(MATERIAL_PRESETS) as MaterialPreset[]).map((m: MaterialPreset) => (
                         <button key={m} onClick={() => setPhysics((p: PhysicsEntity[]) => p.map((x: PhysicsEntity) => x.id === activeEntity.id ? { ...x, ...MATERIAL_PRESETS[m] } : x))}>{m}</button>
                       ))}
-                        <button key={m} onClick={() => setPhysics(p => p.map(x => x.id === activeEntity.id ? {...x, ...MATERIAL_PRESETS[m]} : x))}>{m}</button>
-                      ))}
                     </div>
                   </div>
+                  <div className="entity-controls">
                     <input type="range" min="100" max="10000" step="100" value={activeEntity.mass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateEntityVal(activeEntity.id, 'mass', parseFloat(e.target.value))} />
                     <label>MASS ({activeEntity.mass})</label>
-                  <button className="del-btn" onClick={() => setPhysics((p: PhysicsEntity[]) => p.filter((x: PhysicsEntity) => x.id !== activeEntity.id))}>DISCHARGE_NODE</button>
+                    <button className="del-btn" onClick={() => setPhysics((p: PhysicsEntity[]) => p.filter((x: PhysicsEntity) => x.id !== activeEntity.id))}>DISCHARGE_NODE</button>
                   </div>
-                  <button className="del-btn" onClick={() => setPhysics(p => p.filter(x => x.id !== activeEntity.id))}>DISCHARGE_NODE</button>
                 </div>
-              </div>
             )}
             {isThinking && <div className="think-label">ENVIRONMENT_SCANNING...</div>}
             <div className="ar-vignette" />
-          </div>
             <input value={input} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && processInput(input)} placeholder="AWAITING SPATIAL COMMAND..." />
             <div className="prompt">ASTRA{'>'}</div>
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && processInput(input)} placeholder="AWAITING SPATIAL COMMAND..." />
-          </div>
-        </section>
+          </section>
+
+        <aside className="hud-col right">
           <GlassPanel title="SPATIAL_LAYERS">
             <div className="layer-list">
               {(Object.values(layers) as Layer[]).map((l: Layer) => (
@@ -640,21 +626,20 @@ const App = () => {
               ))}
             </div>
           </GlassPanel>
-            </div>
-          </GlassPanel>
 
-              {grounding.map((l: GroundingLink, i: number) => (
-                <a key={i} href={l.uri} target="_blank" className="grounding-item">
-                  <span className="g-type">[LINK]</span>
-                  <span className="g-title">{l.title || l.uri}</span>
-                </a>
-              ))}
-                </a>
-              ))}
-              {grounding.length === 0 && <div className="empty">NO_REMOTE_UPLINK</div>}
-            </div>
+          <GlassPanel title="GROUNDING_LINKS">
+            {grounding.map((l: GroundingLink, i: number) => (
+              <a key={i} href={l.uri} target="_blank" className="grounding-item">
+                <span className="g-type">[LINK]</span>
+                <span className="g-title">{l.title || l.uri}</span>
+              </a>
+            ))}
+            {grounding.length === 0 && <div className="empty">NO_REMOTE_UPLINK</div>}
           </GlassPanel>
-            <div className="telemetry-box">
+        </aside>
+      </main>
+
+      <div className="telemetry-box">
               {messages.map((m: Message, i: number) => (
                 <div key={i} className={`entry ${m.role}`}>
                   <div className="entry-head">{m.role.toUpperCase()}</div>
@@ -662,86 +647,6 @@ const App = () => {
                 </div>
               ))}
             </div>
-              ))}
-            </div>
-          </GlassPanel>
-        </aside>
-      </main>
-
-      <style>{`
-        :root { --accent: #00e5ff; --bg: #020617; --alert: #ff4b2b; }
-        body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: #fff; overflow: hidden; margin: 0; }
-        .omni-v25 { height: 100vh; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; }
-        .hud-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 24px; background: rgba(0,0,0,0.85); border-bottom: 2px solid var(--accent); z-index: 1000; }
-        .title-stack h1 { margin: 0; font-size: 14px; letter-spacing: 5px; color: var(--accent); text-shadow: 0 0 10px var(--accent); }
-        .meta { font-size: 7px; opacity: 0.6; margin-top: 4px; letter-spacing: 2px; }
-        
-        .hud-grid { display: grid; grid-template-columns: 280px 1fr 280px; gap: 10px; flex: 1; overflow: hidden; margin-top: 10px; }
-        .hud-col { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-
-        .omni-glass { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-        .glass-head { padding: 8px 12px; background: rgba(0,0,0,0.7); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); font-size: 9px; color: var(--accent); font-weight: bold; letter-spacing: 2px; }
-        .glass-head .orb { width: 6px; height: 6px; border: 2.2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 5px var(--accent); }
-        .glass-content { padding: 12px; overflow-y: auto; flex: 1; }
-        .trim { position: absolute; width: 6px; height: 6px; border: 1.5px solid var(--accent); }
-        .tl { top: 0; left: 0; border-right: 0; border-bottom: 0; } .tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
-        .bl { bottom: 0; left: 0; border-right: 0; border-top: 0; } .br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
-
-        .archive-wrap { position: relative; height: 100%; }
-        .lattice-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.4; }
-        .synapse { margin-bottom: 10px; padding: 8px; background: rgba(0, 229, 255, 0.05); border-left: 3px solid var(--accent); font-size: 10px; position: relative; z-index: 10; }
-
-        .telemetry-charts { display: flex; flex-direction: column; gap: 15px; }
-        .mini-chart { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
-        .chart-label { font-size: 7px; color: var(--accent); margin-bottom: 8px; }
-        .chart-bars { display: flex; align-items: flex-end; gap: 2px; height: 40px; }
-        .bar { flex: 1; min-width: 4px; transition: height 0.2s; border-radius: 1px 1px 0 0; }
-
-        .arena-wrapper { flex: 1; background: #000; border: 1.5px solid rgba(0, 229, 255, 0.2); border-radius: 4px; position: relative; overflow: hidden; }
-        .optic-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
-        .ar-vignette { position: absolute; inset: 0; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); pointer-events: none; }
-        .ar-overlay { position: absolute; inset: 0; pointer-events: auto; }
-
-        .p-node { position: absolute; border: 2px solid; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; background: rgba(255,255,255,0.05); backdrop-filter: blur(2px); }
-        .p-tag { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 7px; white-space: nowrap; color: #fff; text-shadow: 1px 1px 2px #000; }
-        .p-node.selected { border-width: 4px; border-color: #fff; box-shadow: 0 0 30px #fff !important; }
-
-        .input-strip { height: 48px; background: rgba(0,0,0,0.9); border: 2px solid var(--accent); border-radius: 4px; display: flex; align-items: center; padding: 0 16px; margin-top: 10px; z-index: 100; }
-        .input-strip input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; outline: none; margin-left: 15px; font-size: 14px; letter-spacing: 1px; }
-        .prompt { color: var(--accent); font-weight: bold; text-shadow: 0 0 5px var(--accent); }
-
-        .mode-selector { display: flex; align-items: center; gap: 10px; }
-        .mode-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-size: 8px; padding: 4px 8px; cursor: pointer; border-radius: 2px; }
-        .mode-btn.active { background: var(--accent); color: #000; }
-        .persona-cycle { display: flex; gap: 4px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 10px; }
-        .p-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 20px; height: 20px; font-size: 9px; cursor: pointer; border-radius: 2px; }
-        .p-btn.active { border-color: var(--accent); color: var(--accent); }
-
-        .handshake-screen { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; gap: 20px; }
-        .center-orb { font-size: 45px; color: var(--accent); text-shadow: 0 0 20px var(--accent); font-weight: 900; }
-        .load-bar { width: 220px; height: 2px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
-        .load-bar .fill { height: 100%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-
-        .spectral-reactor { width: 34px; height: 34px; position: relative; }
-        .reactor-core { position: absolute; inset: 6px; background: var(--accent); border-radius: 50%; opacity: 0.4; transition: scale 0.1s; }
-        .reactor-core.active { opacity: 1; box-shadow: 0 0 15px var(--accent); }
-        .reactor-ring { position: absolute; inset: 0; border: 1.2px dashed var(--accent); border-radius: 50%; animation: spin 20s linear infinite; opacity: 0.5; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .entity-inspector { position: absolute; top: 20px; left: 20px; width: 180px; background: rgba(0,0,0,0.9); border: 1px solid var(--accent); padding: 10px; border-radius: 4px; z-index: 200; backdrop-filter: blur(5px); }
-        .inspector-head { font-size: 9px; font-weight: bold; color: var(--accent); border-bottom: 1px solid rgba(0,229,255,0.2); padding-bottom: 5px; margin-bottom: 10px; }
-        .material-picker .preset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
-        .material-picker button { font-size: 7px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 3px; cursor: pointer; }
-        .del-btn { background: var(--alert); color: #fff; border: none; padding: 5px; font-size: 8px; width: 100%; margin-top: 10px; cursor: pointer; }
-
-        input[type="range"] { appearance: none; background: rgba(255,255,255,0.08); height: 2px; border-radius: 1px; outline: none; margin: 5px 0; width: 100%; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; cursor: pointer; }
-        
-        .empty { font-size: 8px; opacity: 0.3; text-align: center; margin-top: 20px; letter-spacing: 1px; }
-        .entry { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
-        .entry-head { font-size: 7px; color: var(--accent); margin-bottom: 4px; letter-spacing: 1px; }
-        .entry-content { font-size: 10px; line-height: 1.4; opacity: 0.9; }
-      `}</style>
     </div>
   );
 };
