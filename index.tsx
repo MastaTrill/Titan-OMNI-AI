@@ -648,5 +648,5 @@ const App = () => {
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
-  root.render(<App />);
+  root.render(<div style={{color: 'white', padding: '20px', background: 'black'}}>TITAN-OMNI-AI LOADED SUCCESSFULLY</div>);
 }
