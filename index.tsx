@@ -517,7 +517,8 @@ const App = () => {
 
   const activeEntity = useMemo(() => physics.find(p => p.id === selectedEntityId), [physics, selectedEntityId]);
 
-  if (!booted) return <BiometricHandshake onComplete={() => setBooted(true)} />;
+  // Temporarily bypass handshake for debugging
+  // if (!booted) return <BiometricHandshake onComplete={() => setBooted(true)} />;
 
   return (
     <div className={`omni-v25 vision-${vision} persona-${persona.toLowerCase()}`}>
