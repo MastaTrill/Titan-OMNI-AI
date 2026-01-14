@@ -9,6 +9,60 @@ import {
   FunctionDeclaration
 } from "@google/genai";
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('React Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          color: '#ff4b2b',
+          padding: '20px',
+          background: '#020617',
+          fontFamily: 'monospace',
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <h2>🚨 TITAN-OMNI-AI SYSTEM ERROR</h2>
+          <p>Component failed to render</p>
+          <p style={{fontSize: '12px', opacity: 0.7}}>{this.state.error?.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              background: '#00e5ff',
+              color: '#020617',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            RESTART SYSTEM
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // --- Types & Constants ---
 interface Theme { accent: string; bg: string; name: string; secondary: string; glow: string; alert: string; }
 interface GroundingLink { title?: string; uri: string; type: 'web' | 'maps'; snippet?: string; }
@@ -398,6 +452,8 @@ const SpectralReactor = ({ active, intensity, accent }: { active: boolean, inten
 
 // --- Main App ---
 const App = () => {
+  console.log('App component initializing...');
+
   const [booted, setBooted] = useState(false);
   const [grounding, setGrounding] = useState<GroundingLink[]>([]);
   const [mode, setMode] = useState<Mode>('pro');
@@ -646,6 +702,25 @@ const App = () => {
 
 const container = document.getElementById('root');
 if (container) {
-  const root = createRoot(container);
-  root.render(<App />);
+  try {
+    console.log('Initializing Titan-OMNI-AI...');
+    const root = createRoot(container);
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+    console.log('App rendered successfully');
+  } catch (error) {
+    console.error('Failed to render app:', error);
+    container.innerHTML = `
+      <div style="color: red; padding: 20px; background: black; font-family: monospace;">
+        <h2>TITAN-OMNI-AI ERROR</h2>
+        <p>Failed to initialize: ${error.message}</p>
+        <p>Check console for details</p>
+      </div>
+    `;
+  }
+} else {
+  console.error('Root element not found');
 }

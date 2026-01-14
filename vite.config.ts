@@ -24,13 +24,6 @@ export default defineConfig(({ mode }) => {
         },
         modulePreload: {
           polyfill: false // Disable module preload which might cause import map issues
-        },
-        minify: 'terser',
-        terserOptions: {
-          compress: {
-            drop_console: false,
-            drop_debugger: false
-          }
         }
       },
       resolve: {
