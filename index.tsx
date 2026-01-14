@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import './src/styles.css';
+import './styles.css';
 import {
   GoogleGenAI,
   Modality,
