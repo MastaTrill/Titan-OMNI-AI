@@ -367,26 +367,15 @@ const GlassPanel = ({ title, children, className = "", extraHeader }: any) => (
 
 // --- Fix missing components ---
 const BiometricHandshake = ({ onComplete }: { onComplete: () => void }) => {
-  const [progress, setProgress] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((p: number) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setTimeout(onComplete, 300);
-          return 100;
-        }
-        return p + 2;
-      });
-    }, 40);
-    return () => clearInterval(interval);
+    onComplete();
   }, [onComplete]);
 
   return (
     <div className="handshake-screen">
       <div className="center-orb">ASTRA</div>
       <div className="load-bar">
-        <div className="fill" style={{ width: `${progress}%` }} />
+        <div className="fill" style={{ width: `100%` }} />
       </div>
       <div style={{ fontSize: '10px', color: 'var(--accent)', opacity: 0.7, letterSpacing: '4px' }}>INITIALIZING_BIOMETRIC_HANDSHAKE...</div>
     </div>
