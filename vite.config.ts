@@ -15,6 +15,17 @@ export default defineConfig(({ mode }) => {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'AIzaSyBPAY5biWotzdzesWXIoDtIXa8ZlYIV8cc'),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'AIzaSyBPAY5biWotzdzesWXIoDtIXa8ZlYIV8cc')
       },
+      build: {
+        rollupOptions: {
+          external: [], // Don't externalize any dependencies
+          output: {
+            manualChunks: undefined, // Bundle everything into single files
+          }
+        },
+        modulePreload: {
+          polyfill: false // Disable module preload which might cause import map issues
+        }
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
