@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
+import './src/styles.css';
 import {
   GoogleGenAI,
   Modality,
@@ -480,6 +481,9 @@ const App = () => {
     setInput(''); setIsThinking(true);
 
     try {
+      if (!process.env.API_KEY) {
+        throw new Error('GEMINI_API_KEY not configured. Please set your API key.');
+      }
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const model = mode === 'thinking' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
       const config: any = {
