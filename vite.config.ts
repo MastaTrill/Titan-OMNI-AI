@@ -12,19 +12,19 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'AIzaSyBPAY5biWotzdzesWXIoDtIXa8ZlYIV8cc'),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'AIzaSyBPAY5biWotzdzesWXIoDtIXa8ZlYIV8cc')
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE'),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE')
       },
       build: {
+        outDir: 'dist',
+        sourcemap: false,
+        minify: true,
+        chunkSizeWarningLimit: 1500,
         rollupOptions: {
-          external: [], // Don't externalize any dependencies
           output: {
-            manualChunks: undefined, // Bundle everything into single files
-          }
+            manualChunks: undefined,
+          },
         },
-        modulePreload: {
-          polyfill: false // Disable module preload which might cause import map issues
-        }
       },
       resolve: {
         alias: {
